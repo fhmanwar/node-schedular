@@ -10,14 +10,6 @@ app.get("/", function (req, res) {
     // response.send("Hello World!")
 
     // config for your database
-    // var config = {
-    //     user: 'sa',
-    //     password: 'smo4dm1n',
-    //     server: 'ofadev.id', 
-    //     database: 'dbRMTools_Dev3',
-    //     synchronize: true,
-    //     trustServerCertificate: true,
-    // };
     var config = {
         user: 'sa',
         password: 'P@554sql',
