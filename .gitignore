@@ -1,6 +1,6 @@
 
 node_modules/
-file/
+file/*
 package-lock.json
 logs.txt
 .env
