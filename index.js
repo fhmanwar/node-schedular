@@ -1,20 +1,26 @@
 const express = require("express")
-var app = express()
-var port = 5000
 var sql = require("mssql");
 const downloader = require('download');
 const cron = require("node-cron");
 const fs = require("fs");
+require('dotenv').config();
+
+var app = express()
+var port = process.env.PORT
+var dbHost = process.env.DB_HOST
+var dbUserId = process.env.DB_USER
+var dbPass = process.env.DB_PASS
+var db = process.env.DB_DATABASE
 
 app.get("/", function (req, res) {
     // response.send("Hello World!")
 
     // config for your database
     var config = {
-        user: 'sa',
-        password: 'P@554sql',
-        server: '192.168.0.2', 
-        database: 'dbRMTools_Dev3',
+        user: dbUserId,
+        password: dbPass,
+        server: dbHost, 
+        database: db,
         synchronize: true,
         trustServerCertificate: true,
     };
