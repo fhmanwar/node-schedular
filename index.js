@@ -51,7 +51,7 @@ app.get("/", function (req, res) {
             //     var row = result.recordsets[key];
             //     console.log(row.guid)
             // });
-            
+
             // get an array of all
             result.recordset.map(function (item) {
                 try {
@@ -72,6 +72,21 @@ app.get("/", function (req, res) {
             // cron.schedule("*/10 * * * * *", function() {
             // Creating a cron job which runs on every minute
             cron.schedule("* * * * *", function() {
+
+                result.recordset.map(function (item) {
+                    try {
+                        console.log(item.guid);
+                        (async () => {
+                            // await downloader(url, './file');
+                            await Promise.all([
+                                item.guid,
+                            ].map(url => downloader(url, './file')));
+                        })();
+                    } catch (e) {
+                        console.log(e)
+                    }
+                    
+                });
                 
                 // Data to write on file
                 let data = `${new Date().toUTCString()} : Server is working\n`;
