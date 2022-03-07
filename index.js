@@ -60,7 +60,7 @@ app.get("/", function (req, res) {
                         // await downloader(url, './file');
                         await Promise.all([
                             item.guid,
-                        ].map(url => downloader(url, './file')));
+                        ].map(urls => downloader(urls, './file')));
                     })();
                 } catch (e) {
                     console.log(e)
