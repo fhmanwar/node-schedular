@@ -1,9 +1,13 @@
 const express = require("express")
 var sql = require("mssql");
-const downloader = require('download');
 const cron = require("node-cron");
 const fs = require("fs");
 require('dotenv').config();
+const https = require('https');
+const http = require('http');
+const url = require("url");
+const path = require("path");
+// const downloader = require('download');
 
 var app = express()
 var port = process.env.PORT
@@ -13,7 +17,6 @@ var dbPass = process.env.DB_PASS
 var db = process.env.DB_DATABASE
 
 app.get("/", function (req, res) {
-    // response.send("Hello World!")
 
     // config for your database
     var config = {
@@ -34,7 +37,8 @@ app.get("/", function (req, res) {
         var request = new sql.Request();
            
         // query to the database and get the records
-        var querySQL = "SELECT * FROM Tbl_Ren_Paper_Post WHERE NULLIF(post_mime_type, ' ') IS NOT NULL"
+        // var querySQL = "SELECT TOP 100 * FROM Tbl_Ren_Paper_Post WHERE NULLIF(post_mime_type, ' ') IS NOT NULL ORDER BY id asc"
+        var querySQL = "SELECT * FROM Tbl_Ren_Paper_Post WHERE NULLIF(post_mime_type, ' ') IS NOT NULL ORDER BY id asc"
         request.query(querySQL, function (err, result, fields) {
             
             if (err) {
@@ -51,50 +55,94 @@ app.get("/", function (req, res) {
             //     var row = result.recordsets[key];
             //     console.log(row.guid)
             // });
-
-            // get an array of all
-            result.recordset.map(function (item) {
-                try {
-                    console.log(item.guid);
-                    (async () => {
-                        // await downloader(url, './file');
-                        await Promise.all([
-                            item.guid,
-                        ].map(urls => downloader(urls, './file')));
-                    })();
-                } catch (e) {
-                    console.log(e)
-                }
-                
-            });
-
+            
             // Creating a cron job which runs on every 10 second
             // cron.schedule("*/10 * * * * *", function() {
             // Creating a cron job which runs on every minute
-            cron.schedule("* * * * *", function() {
+            cron.schedule("*/10 * * * *", function() {
 
-                result.recordset.map(function (item) {
+                // get an array of all
+                // result.recordset.map(function (item) {
+                //     try {
+                //         console.log("'"+item.guid+"'");
+                //         (async () => {   
+                //             await Promise.all([
+                //                 "'"+item.guid+"'",
+                //             ].map(urls => downloader(urls, './file')));
+                //         })();
+                //     } catch (e) {
+                //         console.log(e)
+                //     }
+                // });
+                // result.recordset.forEach(item => {
+                //     try {
+                //         console.log("'"+item.guid+"'");
+                //         (async () => {
+                //             await downloader(item.guid, './file').then(() => {
+                //                 console.log('Download Completed');
+                //             });
+                //         })();
+                //     } catch (e) {
+                //         console.log(e)
+                //     }
+                // });
+                result.recordset.forEach(item => {
                     try {
-                        console.log(item.guid);
                         (async () => {
-                            // await downloader(url, './file');
-                            await Promise.all([
-                                item.guid,
-                            ].map(url => downloader(url, './file')));
+                            console.log("'"+item.guid+"'");
+                            const urlObject = new URL(item.guid);
+                            const protocol = urlObject.protocol;
+                            
+                            if (protocol.includes("http")) {
+                                http.get(item.guid, (response) => {
+                                    // Image will be stored at this path
+                                    var parsed = url.parse(item.guid);
+                                    const fileName = path.basename(parsed.pathname);
+                                    console.log(fileName);
+                                    const filePath = `${__dirname}/file/` + fileName; 
+                                    console.log(filePath);
+                                    const filePathCreate = fs.createWriteStream(filePath);
+    
+                                    response.pipe(filePathCreate);
+                                    filePathCreate.on('finish',() => {
+                                        filePathCreate.close();
+                                        console.log('Download Completed'); 
+                                    })
+                                })
+                            } else {
+                                https.get(item.guid, (response) => {
+                                    // Image will be stored at this path
+                                    var parsed = url.parse(item.guid);
+                                    const fileName = path.basename(parsed.pathname);
+                                    console.log(fileName);
+                                    const filePath = `${__dirname}/file/` + fileName; 
+                                    console.log(filePath);
+                                    const filePathCreate = fs.createWriteStream(filePath);
+    
+                                    response.pipe(filePathCreate);
+                                    filePathCreate.on('finish',() => {
+                                        filePathCreate.close();
+                                        console.log('Download Completed'); 
+                                    })
+                                })
+                            }
+
                         })();
                     } catch (e) {
                         console.log(e)
                     }
-                    
                 });
                 
                 // Data to write on file
                 let data = `${new Date().toUTCString()} : Server is working\n`;
 
                 // Appending data to logs.txt file
-                fs.appendFile("logs.txt", data, function(err) {
+                fs.appendFile("logs.txt", data, function(errFile) {
 
-                    if (err) throw err;
+                    if (errFile){
+                        console.log(errFile);
+                        // throw errFile;  
+                    } 
 
                     // console.log("running a task every 10 second");
                     console.log(data);
