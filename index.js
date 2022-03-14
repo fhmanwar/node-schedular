@@ -3,11 +3,10 @@ var sql = require("mssql");
 const cron = require("node-cron");
 const fs = require("fs");
 require('dotenv').config();
-const https = require('https');
-const http = require('http');
 const url = require("url");
 const path = require("path");
-// const downloader = require('download');
+const request = require("request");
+const _cliProgress = require("cli-progress");
 
 var app = express()
 var port = process.env.PORT
@@ -47,45 +46,50 @@ app.get("/", function (req, res) {
                 return;
             }
 
-            // send records as a response
-            // res.send(recordset);
-            // res.send(result.recordset.guid);
+            const download = (url, filename, callback) => {
 
-            // Object.keys(result.recordsets).forEach(function(key) {
-            //     var row = result.recordsets[key];
-            //     console.log(row.guid)
-            // });
+                const progressBar = new _cliProgress.SingleBar({
+                    format: '{bar} {percentage}% | ETA: {eta}s'
+                }, _cliProgress.Presets.shades_classic);
             
-            // Creating a cron job which runs on every 10 second
-            // cron.schedule("*/10 * * * * *", function() {
-            // Creating a cron job which runs on every minute
-            cron.schedule("*/10 * * * *", function() {
+                const file = fs.createWriteStream(filename);
+                let receivedBytes = 0
+                
+            
+                request.get(url)
+                .on('response', (response) => {
+                    if (response.statusCode !== 200) {
+                        return callback('Response status was ' + response.statusCode);
+                    }
+            
+                    const totalBytes = response.headers['content-length'];
+                    progressBar.start(totalBytes, 0);
+                })
+                .on('data', (chunk) => {
+                    receivedBytes += chunk.length;
+                    progressBar.update(receivedBytes);
+                })
+                .pipe(file)
+                .on('error', (err) => {
+                    fs.unlink(filename);
+                    progressBar.stop();
+                    return callback(err.message);
+                });
+            
+                file.on('finish', () => {
+                    progressBar.stop();
+                    file.close(callback);
+                });
+            
+                file.on('error', (err) => {
+                    fs.unlink(filename); 
+                    progressBar.stop();
+                    return callback(err.message);
+                });
+            }
 
-                // get an array of all
-                // result.recordset.map(function (item) {
-                //     try {
-                //         console.log("'"+item.guid+"'");
-                //         (async () => {   
-                //             await Promise.all([
-                //                 "'"+item.guid+"'",
-                //             ].map(urls => downloader(urls, './file')));
-                //         })();
-                //     } catch (e) {
-                //         console.log(e)
-                //     }
-                // });
-                // result.recordset.forEach(item => {
-                //     try {
-                //         console.log("'"+item.guid+"'");
-                //         (async () => {
-                //             await downloader(item.guid, './file').then(() => {
-                //                 console.log('Download Completed');
-                //             });
-                //         })();
-                //     } catch (e) {
-                //         console.log(e)
-                //     }
-                // });
+            // Creating a cron job which runs on every 10 minute
+            cron.schedule("*/10 * * * *", function() {
                 result.recordset.forEach(item => {
                     try {
                         (async () => {
@@ -93,39 +97,36 @@ app.get("/", function (req, res) {
                             const urlObject = new URL(item.guid);
                             const protocol = urlObject.protocol;
                             
-                            if (protocol.includes("http")) {
-                                http.get(item.guid, (response) => {
-                                    // Image will be stored at this path
-                                    var parsed = url.parse(item.guid);
-                                    const fileName = path.basename(parsed.pathname);
-                                    console.log(fileName);
-                                    const filePath = `${__dirname}/file/` + fileName; 
-                                    console.log(filePath);
-                                    const filePathCreate = fs.createWriteStream(filePath);
+                            var parsed = url.parse(item.guid);
+                            const fileName = path.basename(parsed.pathname);
+                            console.log(fileName);
+                            const filePath = `${__dirname}/file/` + fileName; 
+                            console.log(filePath);
+
+                            // const fileUrl = `https://unsplash.com/photos/FHo4labMPSQ/download`;
+                            download(item.guid, filePath, () => {});
+
+                            // if (protocol.includes("http")) {
+                            //     http.get(item.guid, (response) => {
+                            //         const filePathCreate = fs.createWriteStream(filePath);
     
-                                    response.pipe(filePathCreate);
-                                    filePathCreate.on('finish',() => {
-                                        filePathCreate.close();
-                                        console.log('Download Completed'); 
-                                    })
-                                })
-                            } else {
-                                https.get(item.guid, (response) => {
-                                    // Image will be stored at this path
-                                    var parsed = url.parse(item.guid);
-                                    const fileName = path.basename(parsed.pathname);
-                                    console.log(fileName);
-                                    const filePath = `${__dirname}/file/` + fileName; 
-                                    console.log(filePath);
-                                    const filePathCreate = fs.createWriteStream(filePath);
+                            //         response.pipe(filePathCreate);
+                            //         filePathCreate.on('finish',() => {
+                            //             filePathCreate.close();
+                            //             console.log('Download Completed'); 
+                            //         })
+                            //     })
+                            // } else {
+                            //     https.get(item.guid, (response) => {
+                            //         const filePathCreate = fs.createWriteStream(filePath);
     
-                                    response.pipe(filePathCreate);
-                                    filePathCreate.on('finish',() => {
-                                        filePathCreate.close();
-                                        console.log('Download Completed'); 
-                                    })
-                                })
-                            }
+                            //         response.pipe(filePathCreate);
+                            //         filePathCreate.on('finish',() => {
+                            //             filePathCreate.close();
+                            //             console.log('Download Completed'); 
+                            //         })
+                            //     })
+                            // }
 
                         })();
                     } catch (e) {
@@ -149,24 +150,7 @@ app.get("/", function (req, res) {
                 });
             });
 
-            // // do sth with every item:
-            // result.recordset.forEach(function(item) {
-            //     console.log(item.guid);
-            // });
-
-            // const url = `https://acquirebase.com/img/logo.png`;
-            // const url = 'http://africau.edu/images/default/sample.pdf';
-            // (async () => {
-            //     // await downloader(url, './file');
-            //     await Promise.all([
-            //         `https://acquirebase.com/img/logo.png`,
-            //         `https://acquirebase.com/img/icon.png`,
-            //         'http://africau.edu/images/default/sample.pdf',
-            //     ].map(url => downloader(url, './file')));
-            // })();
-
             res.status(200).json(result.recordset);
-            // res.status(200);
         });
     });
     
