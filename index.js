@@ -7,6 +7,9 @@ const url = require("url");
 const path = require("path");
 const request = require("request");
 const _cliProgress = require("cli-progress");
+const downloader = require('download');
+const https = require('https');
+const http = require('http');
 
 var app = express()
 var port = process.env.PORT
@@ -33,12 +36,15 @@ app.get("/", function (req, res) {
         if (err) console.log(err);
 
         // create Request object
-        var request = new sql.Request();
+        var sqlRequest = new sql.Request();
            
         // query to the database and get the records
         // var querySQL = "SELECT TOP 100 * FROM Tbl_Ren_Paper_Post WHERE NULLIF(post_mime_type, ' ') IS NOT NULL ORDER BY id asc"
-        var querySQL = "SELECT * FROM Tbl_Ren_Paper_Post WHERE NULLIF(post_mime_type, ' ') IS NOT NULL ORDER BY id asc"
-        request.query(querySQL, function (err, result, fields) {
+        // var querySQL = "SELECT * FROM Tbl_Ren_Paper_Post WHERE NULLIF(post_mime_type, ' ') IS NOT NULL ORDER BY id asc"
+
+        // var querySQL = "select a.post_date, a.post_title, a.[guid], b.name from tbl_ren_paper_post a join tbl_ren_paper_post_taxonomy b on a.post_id = b.post_id where b.taxonomy = 'category' order by a.post_date desc"
+        var querySQL = "select top(100) a.post_date, a.post_title, a.[guid], b.name from tbl_ren_paper_post a join tbl_ren_paper_post_taxonomy b on a.post_id = b.post_id where b.taxonomy = 'category' order by a.post_date desc"
+        sqlRequest.query(querySQL, function (err, result, fields) {
             
             if (err) {
                 console.log(err);
@@ -46,93 +52,52 @@ app.get("/", function (req, res) {
                 return;
             }
 
-            const download = (url, filename, callback) => {
-
-                const progressBar = new _cliProgress.SingleBar({
-                    format: '{bar} {percentage}% | ETA: {eta}s'
-                }, _cliProgress.Presets.shades_classic);
-            
-                const file = fs.createWriteStream(filename);
-                let receivedBytes = 0
+            result.recordset.forEach(item => {
+                var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+                const urlObject = new URL(uri);
+                const protocol = urlObject.protocol;
                 
+                // var parsed = url.parse(item.guid);
+                var parsed = url.parse(uri);
+                const fileName = path.basename(parsed.pathname);
+                console.log(fileName);
+                const filePath = `${__dirname}/file/` + fileName; 
+                console.log(filePath);
+                if (protocol.includes("http")) {
+                    http.get(uri, (response) => {
+                        const filePathCreate = fs.createWriteStream(filePath);
+
+                        response.pipe(filePathCreate);
+                        filePathCreate.on('finish',() => {
+                            filePathCreate.close();
+                            console.log('Download Completed'); 
+                        })
+                    })
+                } else {
+                    https.get(uri, (response) => {
+                        const filePathCreate = fs.createWriteStream(filePath);
+
+                        response.pipe(filePathCreate);
+                        filePathCreate.on('finish',() => {
+                            filePathCreate.close();
+                            console.log('Download Completed'); 
+                        })
+                    })
+                }
+            })
+            // 'http://bniforum.bni.co.id/paper1/wp-content/uploads/2022/02/MARKETSHARE-DPK-NOVEMBER-2021.pdf'
             
-                request.get(url)
-                .on('response', (response) => {
-                    if (response.statusCode !== 200) {
-                        return callback('Response status was ' + response.statusCode);
-                    }
-            
-                    const totalBytes = response.headers['content-length'];
-                    progressBar.start(totalBytes, 0);
-                })
-                .on('data', (chunk) => {
-                    receivedBytes += chunk.length;
-                    progressBar.update(receivedBytes);
-                })
-                .pipe(file)
-                .on('error', (err) => {
-                    fs.unlink(filename);
-                    progressBar.stop();
-                    return callback(err.message);
-                });
-            
-                file.on('finish', () => {
-                    progressBar.stop();
-                    file.close(callback);
-                });
-            
-                file.on('error', (err) => {
-                    fs.unlink(filename); 
-                    progressBar.stop();
-                    return callback(err.message);
-                });
-            }
+            // (async () => {
+            //     // await downloader(url, './file');
+            //     await Promise.all([
+            //         `https://acquirebase.com/img/logo.png`,
+            //         `https://acquirebase.com/img/icon.png`,
+            //         'http://africau.edu/images/default/sample.pdf',
+            //     ].map(url => downloader(url, './file')));
+            // })();
 
             // Creating a cron job which runs on every 10 minute
-            cron.schedule("*/10 * * * *", function() {
-                result.recordset.forEach(item => {
-                    try {
-                        (async () => {
-                            console.log("'"+item.guid+"'");
-                            const urlObject = new URL(item.guid);
-                            const protocol = urlObject.protocol;
-                            
-                            var parsed = url.parse(item.guid);
-                            const fileName = path.basename(parsed.pathname);
-                            console.log(fileName);
-                            const filePath = `${__dirname}/file/` + fileName; 
-                            console.log(filePath);
-
-                            // const fileUrl = `https://unsplash.com/photos/FHo4labMPSQ/download`;
-                            download(item.guid, filePath, () => {});
-
-                            // if (protocol.includes("http")) {
-                            //     http.get(item.guid, (response) => {
-                            //         const filePathCreate = fs.createWriteStream(filePath);
-    
-                            //         response.pipe(filePathCreate);
-                            //         filePathCreate.on('finish',() => {
-                            //             filePathCreate.close();
-                            //             console.log('Download Completed'); 
-                            //         })
-                            //     })
-                            // } else {
-                            //     https.get(item.guid, (response) => {
-                            //         const filePathCreate = fs.createWriteStream(filePath);
-    
-                            //         response.pipe(filePathCreate);
-                            //         filePathCreate.on('finish',() => {
-                            //             filePathCreate.close();
-                            //             console.log('Download Completed'); 
-                            //         })
-                            //     })
-                            // }
-
-                        })();
-                    } catch (e) {
-                        console.log(e)
-                    }
-                });
+            cron.schedule("* * * * *", function() {
                 
                 // Data to write on file
                 let data = `${new Date().toUTCString()} : Server is working\n`;
@@ -148,7 +113,8 @@ app.get("/", function (req, res) {
                     // console.log("running a task every 10 second");
                     console.log(data);
                 });
-            });
+
+            }); //end cron
 
             res.status(200).json(result.recordset);
         });
