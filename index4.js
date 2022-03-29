@@ -49,53 +49,53 @@ sql.connect(config, function (err) {
             return;
         }
 
-        // result.recordset.forEach(item => {
-        //     var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
-        //     const urlObject = new URL(uri);
-        //     const protocol = urlObject.protocol;
+        result.recordset.forEach(item => {
+            var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+            const urlObject = new URL(uri);
+            const protocol = urlObject.protocol;
             
-        //     // var parsed = url.parse(item.guid);
-        //     var parsed = url.parse(uri);
-        //     const fileName = path.basename(parsed.pathname);
-        //     console.log(fileName);
-        //     const filePath = `${__dirname}/file/` + fileName; 
-        //     console.log(filePath);
-        //     if (protocol.includes("http")) {
-        //         http.get(uri, (response) => {
-        //             const filePathCreate = fs.createWriteStream(filePath);
+            // var parsed = url.parse(item.guid);
+            var parsed = url.parse(uri);
+            const fileName = path.basename(parsed.pathname);
+            console.log(fileName);
+            const filePath = `${__dirname}/file/` + fileName; 
+            console.log(filePath);
+            if (protocol.includes("http")) {
+                http.get(uri, (response) => {
+                    const filePathCreate = fs.createWriteStream(filePath);
 
-        //             response.pipe(filePathCreate);
-        //             filePathCreate.on('finish',() => {
-        //                 filePathCreate.close();
-        //                 console.log('Download Completed'); 
-        //             })
-        //         })
-        //     } else {
-        //         https.get(uri, (response) => {
-        //             const filePathCreate = fs.createWriteStream(filePath);
+                    response.pipe(filePathCreate);
+                    filePathCreate.on('finish',() => {
+                        filePathCreate.close();
+                        console.log('Download Completed'); 
+                    })
+                })
+            } else {
+                https.get(uri, (response) => {
+                    const filePathCreate = fs.createWriteStream(filePath);
 
-        //             response.pipe(filePathCreate);
-        //             filePathCreate.on('finish',() => {
-        //                 filePathCreate.close();
-        //                 console.log('Download Completed'); 
-        //             })
-        //         })
-        //     }
-        // })
+                    response.pipe(filePathCreate);
+                    filePathCreate.on('finish',() => {
+                        filePathCreate.close();
+                        console.log('Download Completed'); 
+                    })
+                })
+            }
+        })
         // 'http://bniforum.bni.co.id/paper1/wp-content/uploads/2022/02/MARKETSHARE-DPK-NOVEMBER-2021.pdf'
         
-        result.recordset.forEach(item => {
-            (async () => {
-                var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
-                await downloader(uri, './file');
-            // await downloader(url, './file');
-            // await Promise.all([
-            //     // `https://acquirebase.com/img/logo.png`,
-            //     // `https://acquirebase.com/img/icon.png`,
-            //     // 'http://africau.edu/images/default/sample.pdf',
-            // ].map(url => downloader(url, './file')));
-            })();
-        });
+        // result.recordset.forEach(item => {
+        //     (async () => {
+        //         var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+        //         await downloader(uri, './file');
+        //     // await downloader(url, './file');
+        //     // await Promise.all([
+        //     //     // `https://acquirebase.com/img/logo.png`,
+        //     //     // `https://acquirebase.com/img/icon.png`,
+        //     //     // 'http://africau.edu/images/default/sample.pdf',
+        //     // ].map(url => downloader(url, './file')));
+        //     })();
+        // });
 
         // Creating a cron job which runs on every 10 minute
         cron.schedule("* * * * *", function() {
