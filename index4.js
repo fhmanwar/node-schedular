@@ -18,7 +18,10 @@ var dbUserId = process.env.DB_USER
 var dbPass = process.env.DB_PASS
 var db = process.env.DB_DATABASE
 
-// config for your database
+
+app.get("/", function (req, res) {
+
+    // config for your database
 var config = {
     user: dbUserId,
     password: dbPass,
@@ -117,4 +120,10 @@ sql.connect(config, function (err) {
         // res.status(200).json(result.recordset);
         console.log(result.recordset);
     });
+});
+    
+})
+
+app.listen(port, function () {
+    console.log("Started http://localhost:%d", port)
 });
