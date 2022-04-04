@@ -6,6 +6,10 @@ require('dotenv').config();
 const downloader = require('download');
 const url = require("url");
 const path = require("path");
+const https = require('https');
+const http = require('http');
+const _cliProgress = require("cli-progress");
+const request = require("request");
 
 var app = express()
 var port = process.env.PORT
@@ -32,23 +36,19 @@ sql.connect(config, function (err) {
     // create Request object
     var sqlRequest = new sql.Request();
     
-    //Declare Variable
     var id = 0;
     var title, category, getUrl =null;
     var arrData =[];
-
     // Creating a cron job which runs on every 10 minute
     cron.schedule("* * * * *", function() {
 
-        // Check Data from Database 
         var queryCheck = `select * from tbl_ren_paper_FileDownloader where post_id=${id}`;
         sqlRequest.query(queryCheck, function (err, resultCheck, fieldCheck) {
-            // console.log(resultCheck.recordset);
+            console.log(resultCheck.recordset);
 
+            // query to the database and get the records
             var querySQL = null;
             // console.log(id);
-
-            // check jika data dari database sudah ada
             if (resultCheck.recordset == null) {
             // if (id == 0) {
                 querySQL = `select top(100) a.id, a.post_id, a.post_date, a.post_title, a.[guid], b.name 
@@ -68,8 +68,9 @@ sql.connect(config, function (err) {
                     // res.sendStatus(500);
                     return;
                 }
+
+                // 'http://bniforum.bni.co.id/paper1/wp-content/uploads/2022/02/MARKETSHARE-DPK-NOVEMBER-2021.pdf'
                 
-                // loop hasil data yang di dapatkan
                 result.recordset.forEach(item => {
                     var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
                     var parsed = url.parse(uri);
@@ -80,7 +81,6 @@ sql.connect(config, function (err) {
                     // console.log(fileType);
                     // var pathFile = '\\file\\'+fileName;
 
-                    // check categori Id dari database
                     var categoryId = 0;
                     var queryCatId = `select id from Tbl_Master_Category WHERE Name LIKE '%${item.name}%'`;
                     sqlRequest.query(queryCatId, function (err, resultCatId, fields) {
@@ -91,14 +91,25 @@ sql.connect(config, function (err) {
                             console.log(error);                            
                         }
                     });
-
-
                     var date_ob = new Date();
+                    var day = ("0" + date_ob.getDate()).slice(-2);
+                    var month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
+                    var year = date_ob.getFullYear();
+                    
+                    var date = year + "-" + month + "-" + day;
+                    // console.log(date);
+                    
+                    let postYear = item.post_date.getFullYear();
+                    let postMonth = item.post_date.getMonth();
+                    let postDay = item.post_date.getDate();
+                    // let postHour = item.post_date.getHours();
+                    // let postMinute = item.post_date.getMinutes();
+                    var datePost = postYear + "-" + postMonth + "-" + postDay;
+                    
                     var categoryName = item.name.replace("'", "");
                     var pool = sql.connect(config);
                     try {
                         (async () => {
-                            // Download File dari database
                             await downloader(uri, './file')
                             .then(() => {
                                 console.log('Download Completed');
@@ -148,12 +159,17 @@ sql.connect(config, function (err) {
                 console.log(title);
                 console.log(category);
                 console.log(getUrl);
-                // console.log(arrData);
+                // console.log(arrData);  
+
+                // res.status(200).json(result.recordset);
+                // console.log(result.recordset);
             });
 
         });
-           
-        // log file untuk cron schedular
+            
+        // Data to write on file
+        // let data = `${new Date().toUTCString()} : Server is working\n`;
+        // let data = `${new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })} : Server is working\n`;
         let data = `${new Date().toString()} : Server is working\n`;
 
         // Appending data to logs.txt file
@@ -161,8 +177,10 @@ sql.connect(config, function (err) {
 
             if (errFile){
                 console.log(errFile);
+                // throw errFile;  
             } 
 
+            // console.log("running a task every 10 second");
             console.log(data);
         });
 
