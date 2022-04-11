@@ -106,6 +106,19 @@ sql.connect(config, function (err) {
                                 console.log('Download Completed');
                                 (async () => {
                                     var getId = 0;
+                                    // (await pool).request()
+                                    //     .input('title', sql.VarChar(150), item.post_title)
+                                    //     .input('fileName', sql.VarChar(150), fileName)
+                                    //     .input('fileType', sql.VarChar(150), fileType)
+                                    //     .input('path', sql.VarChar(150), fileName)
+                                    //     .input('uploadDate', sql.DateTime, item.post_date)
+                                    //     .input('categorySource', sql.Int, 1)
+                                    //     .input('categoryId', sql.Int, categoryId)
+                                    //     .input('categoryName', sql.VarChar(150), categoryName)
+                                    //     .input('createdAt', sql.DateTime, date_ob)
+                                    //     .input('isDeleted', sql.Bit, 0)
+                                    //     .input('isActive', sql.Bit, 1)
+                                    //     .query('INSERT INTO Report ( Title, FileName, FileType, Path, UploadTime, CategorySourceId, CategoryId, CategoryName, CreatedTime, IsDeleted, IsActive) VALUES ( @title, @fileName, @fileType, @path, @uploadDate, @categorySource, @categoryId, @categoryName, @createdAt, @isDeleted, @isActive )');
                                     (await pool).request()
                                         .input('title', sql.VarChar(150), item.post_title)
                                         .input('fileName', sql.VarChar(150), fileName)
@@ -118,29 +131,32 @@ sql.connect(config, function (err) {
                                         .input('createdAt', sql.DateTime, date_ob)
                                         .input('isDeleted', sql.Bit, 0)
                                         .input('isActive', sql.Bit, 1)
-                                        .query('INSERT INTO Report ( Title, FileName, FileType, Path, UploadTime, CategorySourceId, CategoryId, CategoryName, CreatedTime, IsDeleted, IsActive) VALUES ( @title, @fileName, @fileType, @path, @uploadDate, @categorySource, @categoryId, @categoryName, @createdAt, @isDeleted, @isActive )');
+                                        .query('INSERT INTO Report ( Title, FileName, FileType, Path, UploadTime, CategorySourceId, CategoryId, CategoryName, CreatedTime, IsDeleted, IsActive) VALUES ( @title, @fileName, @fileType, @path, @uploadDate, @categorySource, @categoryId, @categoryName, @createdAt, @isDeleted, @isActive )',
+                                        function (err, resultIns, fields) {
+                                            // console.log(fields);
+                                            var queryLastId = `select top(1) id from Report order by id desc`;
+                                            sqlRequest.query(queryLastId, function (err, resultInsId, fields) {
+                                                try {
+                                                    getId = resultInsId.recordset[0].id;
+                                                    console.log(getId);
+                                                    (async () => {
+                                                        (await pool).request()
+                                                            .input('ReportId', sql.Int, getId)
+                                                            .input('UniqueId', sql.VarChar(150), uniqueId)
+                                                            .input('FileName', sql.VarChar(150), fileName)
+                                                            .input('FileType', sql.VarChar(150), fileType)
+                                                            .input('Path', sql.VarChar(150), fileName)
+                                                            .input('ChunkNumber', sql.Int, 0)
+                                                            .input('UploadTime', sql.DateTime, item.post_date)
+                                                            .input('isDeleted', sql.Bit, 0)
+                                                            .query('INSERT INTO Report_Attachment ( ReportId, UniqueId, FileName, FileType, Path, ChunkNumber, UploadTime, isDeleted) VALUES ( @ReportId, @UniqueId, @FileName, @FileType, @Path, @ChunkNumber, @UploadTime, @isDeleted )');
+                                                    })();
+                                                } catch (error) {
+                                                    console.log(error);                            
+                                                }
+                                            });
+                                        });
 
-                                    var queryLastId = `select top(1) id from Report order by id desc`;
-                                    sqlRequest.query(queryLastId, function (err, resultInsId, fields) {
-                                        try {
-                                            getId = resultInsId.recordset[0].id;
-                                            console.log(getId);
-                                            (async () => {
-                                                (await pool).request()
-                                                    .input('ReportId', sql.Int, getId)
-                                                    .input('UniqueId', sql.VarChar(150), uniqueId)
-                                                    .input('FileName', sql.VarChar(150), fileName)
-                                                    .input('FileType', sql.VarChar(150), fileType)
-                                                    .input('Path', sql.VarChar(150), fileName)
-                                                    .input('ChunkNumber', sql.Int, 0)
-                                                    .input('UploadTime', sql.DateTime, item.post_date)
-                                                    .input('isDeleted', sql.Bit, 0)
-                                                    .query('INSERT INTO Report_Attachment ( ReportId, UniqueId, FileName, FileType, Path, ChunkNumber, UploadTime, isDeleted) VALUES ( @ReportId, @UniqueId, @FileName, @FileType, @Path, @ChunkNumber, @UploadTime, @isDeleted )');
-                                            })();
-                                        } catch (error) {
-                                            console.log(error);                            
-                                        }
-                                    });
                                                                                 
                                 })();
                             })
