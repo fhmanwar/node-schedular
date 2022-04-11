@@ -6,6 +6,7 @@ require('dotenv').config();
 const downloader = require('download');
 const url = require("url");
 const path = require("path");
+const uuid = require("uuid");
 
 var app = express()
 var port = process.env.PORT
@@ -37,7 +38,7 @@ sql.connect(config, function (err) {
     var title, category, getUrl =null;
     var arrData =[];
 
-    // Creating a cron job which runs on every 10 minute
+    // Creating a cron job which runs on every 1 minute
     cron.schedule("* * * * *", function() {
 
         // Check Data from Database 
@@ -85,7 +86,7 @@ sql.connect(config, function (err) {
                     var queryCatId = `select id from Tbl_Master_Category WHERE Name LIKE '%${item.name}%'`;
                     sqlRequest.query(queryCatId, function (err, resultCatId, fields) {
                         try {
-                            categoryId = resultCatId.recordset[0].id;                            
+                            categoryId = resultCatId.recordset[0].id;
                             // console.log(categoryId);
                         } catch (error) {
                             console.log(error);                            
@@ -95,6 +96,7 @@ sql.connect(config, function (err) {
 
                     var date_ob = new Date();
                     var categoryName = item.name.replace("'", "");
+                    var uniqueId = uuid.v4();
                     var pool = sql.connect(config);
                     try {
                         (async () => {
@@ -103,6 +105,7 @@ sql.connect(config, function (err) {
                             .then(() => {
                                 console.log('Download Completed');
                                 (async () => {
+                                    var getId = 0;
                                     (await pool).request()
                                         .input('title', sql.VarChar(150), item.post_title)
                                         .input('fileName', sql.VarChar(150), fileName)
@@ -116,6 +119,29 @@ sql.connect(config, function (err) {
                                         .input('isDeleted', sql.Bit, 0)
                                         .input('isActive', sql.Bit, 1)
                                         .query('INSERT INTO Report ( Title, FileName, FileType, Path, UploadTime, CategorySourceId, CategoryId, CategoryName, CreatedTime, IsDeleted, IsActive) VALUES ( @title, @fileName, @fileType, @path, @uploadDate, @categorySource, @categoryId, @categoryName, @createdAt, @isDeleted, @isActive )');
+
+                                    var queryLastId = `select top(1) id from Report order by id desc`;
+                                    sqlRequest.query(queryLastId, function (err, resultInsId, fields) {
+                                        try {
+                                            getId = resultInsId.recordset[0].id;
+                                            console.log(getId);
+                                            (async () => {
+                                                (await pool).request()
+                                                    .input('ReportId', sql.Int, getId)
+                                                    .input('UniqueId', sql.VarChar(150), uniqueId)
+                                                    .input('FileName', sql.VarChar(150), fileName)
+                                                    .input('FileType', sql.VarChar(150), fileType)
+                                                    .input('Path', sql.VarChar(150), fileName)
+                                                    .input('ChunkNumber', sql.Int, 0)
+                                                    .input('UploadTime', sql.DateTime, item.post_date)
+                                                    .input('isDeleted', sql.Bit, 0)
+                                                    .query('INSERT INTO Report_Attachment ( ReportId, UniqueId, FileName, FileType, Path, ChunkNumber, UploadTime, isDeleted) VALUES ( @ReportId, @UniqueId, @FileName, @FileType, @Path, @ChunkNumber, @UploadTime, @isDeleted )');
+                                            })();
+                                        } catch (error) {
+                                            console.log(error);                            
+                                        }
+                                    });
+                                                                                
                                 })();
                             })
                             .catch((error) => {
@@ -125,15 +151,14 @@ sql.connect(config, function (err) {
                                         .input('postId', sql.Int, item.post_id)
                                         .input('title', sql.VarChar(150), item.post_title)
                                         .input('category', sql.VarChar(150), categoryName)
-                                        .input('url', sql.VarChar(150), uri)
+                                        .input('url', sql.Text, uri)
                                         .input('createdAt', sql.DateTime, date_ob)
                                         .input('isDeleted', sql.Bit, 0)
                                         .input('msg', sql.VarChar(255), error.message)
                                         .query('INSERT INTO Report_LogFileDownloader ( post_id, post_title, category, url, created_at, isDeleted, msg) VALUES ( @postId, @title, @category, @url, @createdAt, @isDeleted, @msg )');
         
                                 })();
-                            });                           
-                            
+                            });
                         })();
                     } catch (error) {
                         console.log(error);

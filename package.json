@@ -17,6 +17,7 @@
     "mssql": "^8.0.2",
     "node-cron": "^3.0.0",
     "progressive-downloader": "^1.0.7",
-    "request": "^2.88.2"
+    "request": "^2.88.2",
+    "uuid": "^8.3.2"
   }
 }
