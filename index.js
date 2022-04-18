@@ -39,7 +39,23 @@ sql.connect(config, function (err) {
     var arrData =[];
 
     // Creating a cron job which runs on every 1 minute
-    cron.schedule("* * * * *", function() {
+    cron.schedule("*/2 * * * *", function() {
+
+        (async () => {
+            await new Promise(resolve => setTimeout(resolve, 60000));
+        })();
+        // new Promise(resolve => setTimeout(resolve, 1000));
+
+        var queryLastId = `select value from Tbl_SystemParameter WHERE [Key] = 'lastReportId' `;
+        sqlRequest.query(queryLastId, function (err, resultLastId, fields) {
+            try {
+                id = resultLastId.recordset[0].value;
+                // console.log(categoryId);
+            } catch (error) {
+                console.log(error);
+            }
+        });
+        console.log(id);
 
         // Check Data from Database 
         var queryCheck = `select * from tbl_ren_paper_FileDownloader where post_id=${id}`;
@@ -52,12 +68,12 @@ sql.connect(config, function (err) {
             // check jika data dari database sudah ada
             if (resultCheck.recordset == null) {
             // if (id == 0) {
-                querySQL = `select top(100) a.id, a.post_id, a.post_date, a.post_title, a.[guid], b.name 
+                querySQL = `select top(2) a.id, a.post_id, a.post_date, a.post_title, a.[guid], b.name 
                             from tbl_ren_paper_post a join tbl_ren_paper_post_taxonomy b on a.post_id = b.post_id 
                             where b.taxonomy = 'category' and guid not like '%http%'
                             order by a.post_id asc`;
             } else {
-                querySQL = `select top(100) a.id, a.post_id, a.post_date, a.post_title, a.[guid], b.name 
+                querySQL = `select top(2) a.id, a.post_id, a.post_date, a.post_title, a.[guid], b.name 
                             from tbl_ren_paper_post a join tbl_ren_paper_post_taxonomy b on a.post_id = b.post_id 
                             where b.taxonomy = 'category' and guid not like '%http%' and a.post_id > ${id} 
                             order by a.post_id asc`;
@@ -121,7 +137,7 @@ sql.connect(config, function (err) {
                                         .input('sourceDownload', sql.Int, 2)
                                         .input('TotalchunkNumber', sql.Int, 0)
                                         // .input('UniqueId', sql.VarChar(150), uniqueId)
-                                        .query('INSERT INTO Report ( Title, FileName, FileType, Path, UploadTime, CategorySourceId, CategoryId, CategoryName, CreatedTime, IsDeleted, IsActive, ChunkNumber, SourceDownloadId) VALUES ( @title, @fileName, @fileType, @path, @uploadDate, @categorySource, @categoryId, @categoryName, @createdAt, @isDeleted, @isActive, @sourceDownload, @TotalchunkNumber )');
+                                        .query('INSERT INTO Report ( Title, FileName, FileType, Path, UploadTime, CategorySourceId, CategoryId, CategoryName, CreatedTime, IsDeleted, IsActive, ChunkNumber, SourceDownloadId) VALUES ( @title, @fileName, @fileType, @path, @uploadDate, @categorySource, @categoryId, @categoryName, @createdAt, @isDeleted, @isActive, @TotalchunkNumber, @sourceDownload )');
                                                                                                                     
                                 })();
                             })
@@ -155,6 +171,14 @@ sql.connect(config, function (err) {
                 console.log(category);
                 console.log(getUrl);
                 // console.log(arrData);
+
+                var pool = sql.connect(config);
+                (async () => {
+                    console.log('update Table System Parameter');
+                    (await pool).request()
+                        .input('Id', sql.Int, id)
+                        .query(`UPDATE Tbl_SystemParameter set [Value] = @Id where [Key] = 'lastReportId'`);
+                })();
             });
 
         });
