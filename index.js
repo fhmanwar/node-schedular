@@ -159,6 +159,22 @@ sql.connect(config, function (err) {
                         })();
                     } catch (error) {
                         console.log(error);
+                        (async () => {
+                            console.log('Download not Completed');
+                            var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+                            var categoryName = item.name.replace("'", "");
+                            var date_ob = new Date();
+                            (await pool).request()
+                                .input('postId', sql.Int, item.post_id)
+                                .input('title', sql.VarChar(150), item.post_title)
+                                .input('category', sql.VarChar(150), categoryName)
+                                .input('url', sql.Text, uri)
+                                .input('createdAt', sql.DateTime, date_ob)
+                                .input('isDeleted', sql.Bit, 0)
+                                .input('msg', sql.VarChar(255), error.message)
+                                .query('INSERT INTO Report_LogFileDownloader ( post_id, post_title, category, url, created_at, isDeleted, msg) VALUES ( @postId, @title, @category, @url, @createdAt, @isDeleted, @msg )');
+
+                        })();
                     }
                     arrData.push(uri);
                     id = item.post_id;
