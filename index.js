@@ -89,7 +89,14 @@ sql.connect(config, function (err) {
                 // loop hasil data yang di dapatkan
                 result.recordset.forEach(item => {
                     try {
-                        var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+                        // var uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+                        var uri = '';
+                        if (item.guid.includes('http') && item.guid.includes('.pdf')) {
+                            uri = item.guid;
+                        } else {
+                            uri = 'http://bniforum.bni.co.id/paper1/wp-content/uploads/'+item.guid;
+                        }
+                        console.log(uri);
                         var parsed = url.parse(uri);
                         var fileName = path.basename(parsed.pathname);
                         // console.log(fileName);
